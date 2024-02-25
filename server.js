@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors'); // Import CORS middleware
 const app = express();
 const PORT = 8080;
+const bcrypt = require('bcrypt');
 
 // Import User model
 const User = require('./models/User');
@@ -19,69 +20,119 @@ mongoose.connect('mongodb+srv://admin:admin271*@cluster.wtbgcs2.mongodb.net/?ret
 .then(() => console.log('MongoDB connected'))
 .catch(err => console.error('MongoDB connection error:', err));
 
-app.post('/checkUserExists', (req, res) => {
-  // Extract email from the request body
+app.post('/checkUserExists', async (req, res) => {
   const { email } = req.body;
-
-  // For the sake of demonstration, let's assume you have a User model and you want to check if the email exists in the database
-  User.findOne({ email: email }, (err, user) => {
-    if (err) {
-      console.error('Error checking user existence:', err);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-    
-    // If user is found, return exists: true, otherwise return exists: false
-    if (user) {
-      return res.json({ exists: true });
-    } else {
-      return res.json({ exists: false });
-    }
-  });
+  try {
+    const userExists = await User.exists({ email });
+    res.json({ exists: !!userExists }); // Convert to boolean
+  } catch (error) {
+    console.error('Error checking user existence:', error);
+    res.status(500).json({ exists: false });
+  }
 });
 
-// Define a route to handle the checkPassword request
-app.post('/checkPassword', (req, res) => {
-  // Extract email and password from the request body
+app.post('/checkPassword', async (req, res) => {
   const { email, password } = req.body;
-
-  // Here you would perform your logic to check if the provided password matches the password associated with the given email in your database
-  // For the sake of demonstration, let's assume you have a User model and you want to check if the password matches the email in the database
-  User.findOne({ email: email, password: password }, (err, user) => {
-    if (err) {
-      console.error('Error checking password:', err);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-    
-    // If user is found and password matches, return correctPassword: true, otherwise return correctPassword: false
+  try {
+    const user = await User.findOne({ email });
     if (user) {
-      return res.json({ correctPassword: true });
+      const isMatch = await bcrypt.compare(password, user.password);
+      res.json({ correctPassword: isMatch });
     } else {
-      return res.json({ correctPassword: false });
+      res.json({ correctPassword: false });
     }
-  });
+  } catch (error) {
+    console.error('Error verifying password:', error);
+    res.status(500).json({ correctPassword: false });
+  }
 });
+
 
 app.post('/saveUserData', async (req, res) => {
-  // Extract name, email, and password from the request body
   const { name, email, password } = req.body;
 
-  // Here you would save the user data to your database
-  // For the sake of demonstration, let's assume you have a User model and you want to save the user data to the database
-  const newUser = new User({ name, email, password });
+  // Generate a hashed password
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Generate a simple verification code
+  const verificationCode = Math.random().toString(36).substring(2, 8);
 
   try {
-    // Save the user data to the database
+    // Create a new user with the verification code and hashed password
+    const newUser = new User({
+      name,
+      email,
+      password: hashedPassword,
+      emailVerified: false,
+      temporaryVerificationCode: verificationCode,
+    });
+
+    // Save the new user
     await newUser.save();
-    // Handle success if needed
-    console.log('User data saved successfully!');
-    return res.status(200).json({ message: 'User data saved successfully' });
+
+    // Send the verification email with the code
+    await sendVerificationEmail(email, verificationCode);
+
+    // Respond to the request
+    res.status(201).send('User registered, verification email sent.');
   } catch (error) {
-    console.error('Error saving user data:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('Registration error:', error);
+    res.status(500).send('Error registering user.');
   }
 });
 
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+
 });
+
+const nodemailer = require('nodemailer');
+
+// Configure Nodemailer
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'lamdadev9@gmail.com', // Use environment variables
+    pass: 'LamdaDev2024', // Use environment variables
+  },
+});
+
+const sendVerificationEmail = async (email, verificationCode) => {
+  const mailOptions = {
+    from: 'lamdadev9@gmail.com',
+    to: email,
+    subject: 'Verify Your Email',
+    text: `Your verification code is: ${verificationCode}`,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log('Email sent successfully.');
+  } catch (error) {
+    console.error('Failed to send email:', error);
+  }
+};
+
+app.post('/verifyEmail', async (req, res) => {
+  const { verificationCode } = req.body;
+
+  try {
+    const user = await User.findOne({ temporaryVerificationCode: verificationCode });
+    if (user) {
+      user.emailVerified = true;
+      user.temporaryVerificationCode = null;
+      await user.save();
+      res.send('Email verified successfully.');
+    } else {
+      res.status(400).send('Invalid verification code.');
+    }
+  } catch (error) {
+    console.error('Verification error:', error);
+    res.status(500).send('Server error during verification.');
+  }
+});
+
+

@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 
-// Define the user schema
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -14,10 +13,18 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true
+  },
+  emailVerified: {
+    type: Boolean,
+    required: true,
+    default: false // New users are not verified
+  },
+  temporaryVerificationCode: {
+    type: String,
+    required: false // This can be null or omitted if not used
   }
 });
 
-// Create the User model based on the schema
 const User = mongoose.model('User', userSchema);
 
-module.exports = User; // Export the User model
+module.exports = User;
