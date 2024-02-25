@@ -125,6 +125,26 @@ app.post('/verifyEmail', async (req, res) => {
   }
 });
 
+app.post('/checkUserVerified', async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    // Find the user in the database by email
+    const user = await User.findOne({ email });
+
+    // If the user is found and is verified, send back a response indicating so
+    if (user && user.emailVerified) {
+      res.json({ isVerified: true });
+    } else {
+      // If the user is not found or not verified, send back a response indicating so
+      res.json({ isVerified: false });
+    }
+  } catch (error) {
+    console.error('Error checking user verification status:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
