@@ -36,7 +36,8 @@ app.post('/checkPassword', async (req, res) => {
   try {
     const user = await User.findOne({ email });
     if (user) {
-      const isMatch = await bcrypt.compare(password, user.password);
+      // Directly compare the plaintext passwords
+      const isMatch = (user.password === password);
       res.json({ correctPassword: isMatch });
     } else {
       res.json({ correctPassword: false });
@@ -51,9 +52,6 @@ app.post('/checkPassword', async (req, res) => {
 app.post('/saveUserData', async (req, res) => {
   const { name, email, password } = req.body;
 
-  // Generate a hashed password
-  const hashedPassword = await bcrypt.hash(password, 10);
-
   // Generate a simple verification code
   const verificationCode = Math.random().toString(36).substring(2, 8);
 
@@ -62,7 +60,7 @@ app.post('/saveUserData', async (req, res) => {
     const newUser = new User({
       name,
       email,
-      password: hashedPassword,
+      password: password,
       emailVerified: false,
       temporaryVerificationCode: verificationCode,
     });
