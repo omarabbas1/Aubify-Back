@@ -25,16 +25,16 @@ mongoose.connect('mongodb+srv://admin:admin271*@cluster.wtbgcs2.mongodb.net/?ret
 .catch(err => console.error('MongoDB connection error:', err));
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  service: "hotmail",
   auth: {
-    user: 'lamdadev9@gmail.com', // Use environment variables
+    user: 'lamdadev9@outlook.com', // Use environment variables
     pass: 'LamdaDev2024', // Use environment variables
   },
 });
 
 const sendVerificationEmail = async (email, verificationCode) => {
   const mailOptions = {
-    from: 'lamdadev9@gmail.com',
+    from: 'lamdadev9@outlook.com',
     to: email,
     subject: 'Verify Your Email',
     text: `Your verification code is: ${verificationCode}`,
