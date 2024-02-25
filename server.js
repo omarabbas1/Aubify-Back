@@ -4,9 +4,13 @@ const cors = require('cors'); // Import CORS middleware
 const app = express();
 const PORT = 8080;
 const bcrypt = require('bcrypt');
+const nodemailer = require('nodemailer');
 
 // Import User model
 const User = require('./models/User');
+
+// Configure Nodemailer
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 // Middleware
 app.use(express.json()); // Parse JSON requests
@@ -19,6 +23,30 @@ mongoose.connect('mongodb+srv://admin:admin271*@cluster.wtbgcs2.mongodb.net/?ret
 })
 .then(() => console.log('MongoDB connected'))
 .catch(err => console.error('MongoDB connection error:', err));
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'lamdadev9@gmail.com', // Use environment variables
+    pass: 'LamdaDev2024', // Use environment variables
+  },
+});
+
+const sendVerificationEmail = async (email, verificationCode) => {
+  const mailOptions = {
+    from: 'lamdadev9@gmail.com',
+    to: email,
+    subject: 'Verify Your Email',
+    text: `Your verification code is: ${verificationCode}`,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log('Email sent successfully.');
+  } catch (error) {
+    console.error('Failed to send email:', error);
+  }
+};
 
 app.post('/checkUserExists', async (req, res) => {
   const { email } = req.body;
@@ -47,7 +75,6 @@ app.post('/checkPassword', async (req, res) => {
     res.status(500).json({ correctPassword: false });
   }
 });
-
 
 app.post('/saveUserData', async (req, res) => {
   const { name, email, password } = req.body;
@@ -79,41 +106,6 @@ app.post('/saveUserData', async (req, res) => {
   }
 });
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-
-});
-
-const nodemailer = require('nodemailer');
-
-// Configure Nodemailer
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: 'lamdadev9@gmail.com', // Use environment variables
-    pass: 'LamdaDev2024', // Use environment variables
-  },
-});
-
-const sendVerificationEmail = async (email, verificationCode) => {
-  const mailOptions = {
-    from: 'lamdadev9@gmail.com',
-    to: email,
-    subject: 'Verify Your Email',
-    text: `Your verification code is: ${verificationCode}`,
-  };
-
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully.');
-  } catch (error) {
-    console.error('Failed to send email:', error);
-  }
-};
-
 app.post('/verifyEmail', async (req, res) => {
   const { verificationCode } = req.body;
 
@@ -133,4 +125,8 @@ app.post('/verifyEmail', async (req, res) => {
   }
 });
 
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 
+});
