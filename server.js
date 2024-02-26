@@ -64,8 +64,8 @@ app.post('/checkPassword', async (req, res) => {
   try {
     const user = await User.findOne({ email });
     if (user) {
-      // Directly compare the plaintext passwords
-      const isMatch = (user.password === password);
+      // Use bcrypt to compare the provided password with the stored hash
+      const isMatch = await bcrypt.compare(password, user.password);
       res.json({ correctPassword: isMatch });
     } else {
       res.json({ correctPassword: false });
@@ -78,16 +78,19 @@ app.post('/checkPassword', async (req, res) => {
 
 app.post('/saveUserData', async (req, res) => {
   const { name, email, password } = req.body;
-
   // Generate a simple verification code
   const verificationCode = Math.random().toString(36).substring(2, 8);
 
   try {
+    // Hash the password before saving
+    const saltRounds = 10; // You can adjust the cost factor as needed
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
     // Create a new user with the verification code and hashed password
     const newUser = new User({
       name,
       email,
-      password: password,
+      password: hashedPassword, // Store the hashed password
       emailVerified: false,
       temporaryVerificationCode: verificationCode,
     });
@@ -105,6 +108,7 @@ app.post('/saveUserData', async (req, res) => {
     res.status(500).send('Error registering user.');
   }
 });
+
 
 app.post('/verifyEmail', async (req, res) => {
   const { verificationCode } = req.body;
