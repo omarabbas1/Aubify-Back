@@ -68,7 +68,8 @@ app.post('/checkPassword', async (req, res) => {
       const isMatch = await bcrypt.compare(password, user.password);
       res.json({ correctPassword: isMatch });
     } else {
-      res.json({ correctPassword: false });
+      res.json({ correctPassword: false }); 
+      
     }
   } catch (error) {
     console.error('Error verifying password:', error);
