@@ -1,7 +1,12 @@
+// models/Comment.js
 const mongoose = require('mongoose');
 
-const CommentSchema = new mongoose.Schema({
-  content: String,
-//   author: String, // Optional, depending on your requirements
+const commentSchema = new mongoose.Schema({
+  content: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
+  // Add other fields as needed
 });
+
+const Comment = mongoose.model('Comment', commentSchema);
+
+module.exports = Comment;

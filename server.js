@@ -8,6 +8,9 @@ const nodemailer = require('nodemailer');
 
 // Import User model
 const User = require('./models/User');
+const Post = require('./models/Post'); // Adjust the path as necessary based on your project structure
+const Comment = require('./models/Comment'); // Adjust the path according to your project structure
+
 
 // Configure Nodemailer
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
@@ -179,6 +182,66 @@ app.post('/handleSignin', async (req, res) => {
   } catch (error) {
     console.error('Error getting user name:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.post('/posts', async (req, res) => {
+  const { title, content } = req.body; // No author information
+  try {
+    const newPost = new Post({ title, content, comments: [] });
+    await newPost.save();
+    res.status(201).json(newPost);
+  } catch (error) {
+    console.error('Error creating post:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+app.post('/posts/:postId/comments', async (req, res) => {
+  const { postId } = req.params;
+  const { content } = req.body;
+
+  try {
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).send('Post not found');
+    }
+
+    // Create a new comment
+    const newComment = new Comment({ content });
+    await newComment.save(); // Save the comment to the database
+
+    // Push the new comment's ID to the post's comments array
+    post.comments.push(newComment._id);
+    await post.save();
+
+    res.status(200).json(post);
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+app.get('/posts', async (req, res) => {
+  try {
+    // Ensure 'comments' is populated to fetch actual comment documents
+    const posts = await Post.find().populate('comments');
+    res.json(posts);
+  } catch (error) {
+    console.error('Error fetching posts:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+
+
+app.get('/posts', async (req, res) => {
+  try {
+    const posts = await Post.find().populate('comments'); // Assuming 'comments' is correctly referenced
+    res.json(posts);
+  } catch (error) {
+    console.error('Error fetching posts:', error);
+    res.status(500).send('Internal server error');
   }
 });
 
