@@ -232,22 +232,8 @@ app.get('/posts', async (req, res) => {
   }
 });
 
-
-
-app.get('/posts', async (req, res) => {
-  try {
-    const posts = await Post.find().populate('comments'); // Assuming 'comments' is correctly referenced
-    res.json(posts);
-  } catch (error) {
-    console.error('Error fetching posts:', error);
-    res.status(500).send('Internal server error');
-  }
-});
-
-
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 
 });
-
