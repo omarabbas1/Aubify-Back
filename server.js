@@ -184,6 +184,24 @@ app.post('/handleSignin', async (req, res) => {
   }
 });
 
+app.post('/handleSignup', async (req, res) => {
+  const { email } = req.body;
+  try {
+    // Assuming you have a function that finds the user by email and returns their name
+    const userName = await findUserNameByEmail(email);
+    if (userName) {
+      res.json({ success: true, userName });
+    } else {
+      res.status(404).json({ success: false, message: 'User not found' });
+    }
+  } catch (error) {
+    console.error('Error getting user name:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+
+
 app.post('/posts', async (req, res) => {
   const { title, content } = req.body; // No author information
   try {
