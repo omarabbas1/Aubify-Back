@@ -5,7 +5,6 @@ const app = express();
 const PORT = 8080;
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
-
 // Import User model
 const User = require('./models/User');
 const Post = require('./models/Post'); // Adjust the path as necessary based on your project structure
