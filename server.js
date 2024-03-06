@@ -32,6 +32,22 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Function to find user by email and return their name
+const findUserNameByEmail = async (email) => {
+  try {
+    const user = await User.findOne({ email: email });
+    if (user) {
+      return user.name; // Assuming 'name' is the field for the user's name
+    } else {
+      return null; // User not found
+    }
+  } catch (error) {
+    console.error('Error finding user by email:', error);
+    throw error; // Re-throw the error to handle it in the calling function
+  }
+};
+
+
 const sendVerificationEmail = async (email, verificationCode) => {
   const mailOptions = {
     from: 'lamdadev9@outlook.com',
@@ -149,6 +165,23 @@ app.post('/checkUserVerified', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+app.post('/handleSignin', async (req, res) => {
+  const { email } = req.body;
+  try {
+    // Assuming you have a function that finds the user by email and returns their name
+    const userName = await findUserNameByEmail(email);
+    if (userName) {
+      res.json({ success: true, userName });
+    } else {
+      res.status(404).json({ success: false, message: 'User not found' });
+    }
+  } catch (error) {
+    console.error('Error getting user name:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
 
 // Start the server
 app.listen(PORT, () => {
