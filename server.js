@@ -187,10 +187,10 @@ app.post('/handleSignin', async (req, res) => {
 app.post('/handleSignup', async (req, res) => {
   const { email } = req.body;
   try {
-    // Assuming you have a function that finds the user by email and returns their name
-    const userName = await findUserNameByEmail(email);
-    if (userName) {
-      res.json({ success: true, userName });
+    const user = await User.findOne({ email }).exec();
+    if (user) {
+      // Send back the userName and emailVerified status after finding the user
+      res.json({ success: true, userName: user.name, emailVerified: user.emailVerified });
     } else {
       res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -249,6 +249,19 @@ app.get('/posts', async (req, res) => {
     res.status(500).send('Internal server error');
   }
 });
+
+
+
+app.get('/posts', async (req, res) => {
+  try {
+    const posts = await Post.find().populate('comments'); // Assuming 'comments' is correctly referenced
+    res.json(posts);
+  } catch (error) {
+    console.error('Error fetching posts:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
 
 // Start the server
 app.listen(PORT, () => {
