@@ -1,13 +1,12 @@
-// models/Comment.js
 const mongoose = require('mongoose');
 
-// models/Post.js
 const postSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  content: { type: String, required: true },
-  comments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Comment' }],
+  title: String,
+  content: String,
   createdAt: { type: Date, default: Date.now },
+  comments: [String] // Changed to an array of strings
 });
 
 const Post = mongoose.model('Post', postSchema);
+
 module.exports = Post;

@@ -214,30 +214,52 @@ app.post('/posts', async (req, res) => {
   }
 });
 
-app.post('/posts/:postId/comments', async (req, res) => {
-  const { postId } = req.params;
-  const { content } = req.body;
+// app.post('/posts/:postId/comments', async (req, res) => {
+//   const { postId } = req.params;
+//   const { content } = req.body;
 
+//   try {
+//     const post = await Post.findById(postId);
+//     if (!post) {
+//       return res.status(404).send('Post not found');
+//     }
+
+//     // Create a new comment
+//     const newComment = new Comment({ content });
+//     await newComment.save(); // Save the comment to the database
+
+//     // Push the new comment's ID to the post's comments array
+//     post.comments.push(newComment._id);
+//     await post.save();
+
+//     res.status(200).json(post);
+//   } catch (error) {
+//     console.error('Error adding comment:', error);
+//     res.status(500).send('Internal server error');
+//   }
+// });
+
+
+app.post('/posts/:postId/comments', async (req, res) => {
   try {
+    const postId = req.params.postId;
+    const comment = req.body.comment;
     const post = await Post.findById(postId);
+
     if (!post) {
       return res.status(404).send('Post not found');
     }
 
-    // Create a new comment
-    const newComment = new Comment({ content });
-    await newComment.save(); // Save the comment to the database
-
-    // Push the new comment's ID to the post's comments array
-    post.comments.push(newComment._id);
+    post.comments.push(comment);
     await post.save();
-
-    res.status(200).json(post);
+    res.json(post);
   } catch (error) {
     console.error('Error adding comment:', error);
     res.status(500).send('Internal server error');
   }
 });
+
+
 
 app.get('/posts', async (req, res) => {
   try {
@@ -251,21 +273,28 @@ app.get('/posts', async (req, res) => {
 });
 
 
-
-app.get('/posts', async (req, res) => {
+app.get('/posts/:postId', async (req, res) => {
   try {
-    const posts = await Post.find().populate('comments'); // Assuming 'comments' is correctly referenced
-    res.json(posts);
+    const postId = req.params.postId;
+    // Ensure 'comments' is populated to fetch actual comment documents
+    const post = await Post.findById(postId).populate('comments');
+    if (!post) {
+      return res.status(404).send('Post not found');
+    }
+    res.json(post);
   } catch (error) {
-    console.error('Error fetching posts:', error);
+    console.error('Error fetching post:', error);
     res.status(500).send('Internal server error');
   }
 });
+
+
+
+
 
 
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 
-  //hussein
 });
