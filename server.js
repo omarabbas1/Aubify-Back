@@ -263,8 +263,7 @@ app.post('/posts/:postId/comments', async (req, res) => {
 
 app.get('/posts', async (req, res) => {
   try {
-    // Ensure 'comments' is populated to fetch actual comment documents
-    const posts = await Post.find().populate('comments');
+    const posts = await Post.find().sort({ upvotes: -1 }); // Sort by upvotes in descending order
     res.json(posts);
   } catch (error) {
     console.error('Error fetching posts:', error);
@@ -287,6 +286,79 @@ app.get('/posts/:postId', async (req, res) => {
     res.status(500).send('Internal server error');
   }
 });
+
+app.post('/posts/:postId/upvote', async (req, res) => {
+  const { postId } = req.params;
+  const {userEmail} = req.body; // Assuming you have user's email from the session or token
+
+  try {
+    const user = await User.findOne({ email: userEmail });
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).send('Post not found');
+    }
+
+    const userId = user._id;
+    if (post.upvotedBy.includes(userId)) {
+      return res.status(409).send('You have already upvoted this post.');
+    }
+
+    if (post.downvotedBy.includes(userId)) {
+      post.downvotes -= 1;
+      post.downvotedBy = post.downvotedBy.filter(id => id.toString() !== userId.toString());
+    }
+
+    post.upvotes += 1;
+    post.upvotedBy.push(userId);
+    await post.save();
+    res.json(post);
+  } catch (error) {
+    console.error('Error upvoting post:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+app.post('/posts/:postId/downvote', async (req, res) => {
+  const { postId } = req.params;
+  const {userEmail} = req.body; // Assuming you have user's email from the session or token
+
+  try {
+    const user = await User.findOne({ email: userEmail });
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).send('Post not found');
+    }
+
+    const userId = user._id;
+    if (post.downvotedBy.includes(userId)) {
+      return res.status(409).send('You have already downvoted this post.');
+    }
+
+    if (post.upvotedBy.includes(userId)) {
+      post.upvotes -= 1;
+      post.upvotedBy = post.upvotedBy.filter(id => id.toString() !== userId.toString());
+    }
+
+    post.downvotes += 1;
+    post.downvotedBy.push(userId);
+    await post.save();
+    res.json(post);
+  } catch (error) {
+    console.error('Error downvoting post:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+
+
 
 
 

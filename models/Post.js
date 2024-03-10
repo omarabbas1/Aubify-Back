@@ -4,7 +4,11 @@ const postSchema = new mongoose.Schema({
   title: String,
   content: String,
   createdAt: { type: Date, default: Date.now },
-  comments: [String] // Changed to an array of strings
+  comments: [String],
+  upvotes: { type: Number, default: 0 },
+  downvotes: { type: Number, default: 0 },
+  upvotedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  downvotedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 });
 
 const Post = mongoose.model('Post', postSchema);
