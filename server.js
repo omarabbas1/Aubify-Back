@@ -52,7 +52,7 @@ const findUserNameByEmail = async (email) => {
 
 const sendVerificationEmail = async (email, verificationCode) => {
   const mailOptions = {
-    from: 'Aubify@outlook.com',
+    from: 'Aubify10@outlook.com',
     to: email,
     subject: 'Verify Your Email',
     text: `Your verification code is: ${verificationCode}`,
