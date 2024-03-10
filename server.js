@@ -260,16 +260,25 @@ app.post('/posts/:postId/comments', async (req, res) => {
 });
 
 
-
-app.get('/posts', async (req, res) => {
-  try {
-    const posts = await Post.find().sort({ upvotes: -1 }); // Sort by upvotes in descending order
-    res.json(posts);
-  } catch (error) {
-    console.error('Error fetching posts:', error);
-    res.status(500).send('Internal server error');
-  }
-});
+  app.get('/posts', async (req, res) => {
+    try {
+      const posts = await Post.aggregate([
+        {
+          $addFields: {
+            votesDifference: { $subtract: ["$upvotes", "$downvotes"] }
+          }
+        },
+        {
+          $sort: { votesDifference: -1 }
+        }
+      ]);
+      res.json(posts);
+    } catch (error) {
+      console.error('Error fetching sorted posts:', error);
+      res.status(500).send('Internal server error');
+    }
+  });
+  
 
 
 app.get('/posts/:postId', async (req, res) => {
