@@ -29,8 +29,8 @@ mongoose.connect('mongodb+srv://admin:admin271*@cluster.wtbgcs2.mongodb.net/?ret
 const transporter = nodemailer.createTransport({
   service: "hotmail",
   auth: {
-    user: 'lamdadev9@outlook.com', // Use environment variables
-    pass: 'LamdaDev2024', // Use environment variables
+    user: 'Aubify10@outlook.com', // Use environment variables
+    pass: 'LamdaDev@2024', // Use environment variables
   },
 });
 
@@ -52,7 +52,7 @@ const findUserNameByEmail = async (email) => {
 
 const sendVerificationEmail = async (email, verificationCode) => {
   const mailOptions = {
-    from: 'lamdadev9@outlook.com',
+    from: 'Aubify@outlook.com',
     to: email,
     subject: 'Verify Your Email',
     text: `Your verification code is: ${verificationCode}`,
