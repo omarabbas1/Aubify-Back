@@ -357,6 +357,92 @@ app.post('/posts/:postId/downvote', async (req, res) => {
   }
 });
 
+app.post('/posts/:postId/comments/:commentIndex/upvote', async (req, res) => {
+  const { postId, commentIndex } = req.params;
+  const { userEmail } = req.body;
+
+  try {
+    const user = await User.findOne({ email: userEmail });
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).send('Post not found');
+    }
+
+    const comment = post.comments[commentIndex];
+    if (!comment) {
+      return res.status(404).send('Comment not found');
+    }
+
+    const userId = user._id.toString();
+    const alreadyUpvoted = comment.upvotedBy.includes(userId);
+    const alreadyDownvoted = comment.downvotedBy.includes(userId);
+
+    if (!alreadyUpvoted) {
+      if (alreadyDownvoted) {
+        // Remove from downvotedBy and decrement downvotes
+        comment.downvotes -= 1;
+        comment.downvotedBy = comment.downvotedBy.filter(id => id.toString() !== userId);
+      }
+      // Add to upvotedBy and increment upvotes
+      comment.upvotes += 1;
+      comment.upvotedBy.push(userId);
+    }
+    post.comments.sort((a, b) => b.upvotes - a.upvotes);
+    await post.save();
+    res.json(post);
+  } catch (error) {
+    console.error('Error upvoting comment:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+app.post('/posts/:postId/comments/:commentIndex/downvote', async (req, res) => {
+  const { postId, commentIndex } = req.params;
+  const { userEmail } = req.body;
+
+  try {
+    const user = await User.findOne({ email: userEmail });
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).send('Post not found');
+    }
+
+    const comment = post.comments[commentIndex];
+    if (!comment) {
+      return res.status(404).send('Comment not found');
+    }
+
+    const userId = user._id.toString();
+    const alreadyUpvoted = comment.upvotedBy.includes(userId);
+    const alreadyDownvoted = comment.downvotedBy.includes(userId);
+
+    if (!alreadyDownvoted) {
+      if (alreadyUpvoted) {
+        // Remove from upvotedBy and decrement upvotes
+        comment.upvotes -= 1;
+        comment.upvotedBy = comment.upvotedBy.filter(id => id.toString() !== userId);
+      }
+      // Add to downvotedBy and increment downvotes
+      comment.downvotes += 1;
+      comment.downvotedBy.push(userId);
+    }
+    post.comments.sort((a, b) => b.upvotes - a.upvotes);
+    await post.save();
+    res.json(post);
+  } catch (error) {
+    console.error('Error downvoting comment:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
 
 
 
