@@ -13,14 +13,12 @@ const commentSchema = new mongoose.Schema({
 const postSchema = new mongoose.Schema({
   title: String,
   content: String,
-  createdAt: { type: Date, default: Date.now },
   comments: [commentSchema],
   upvotes: { type: Number, default: 0 },
   downvotes: { type: Number, default: 0 },
   upvotedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   downvotedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-});
-
+},{ timestamps: true });
 const Post = mongoose.model('Post', postSchema);
 
 module.exports = Post;

@@ -259,17 +259,38 @@ app.post('/posts/:postId/comments', async (req, res) => {
   }
 });
 
+// Function to fetch posts sorted by upvotes (relevance)
+const fetchPostsByRelevance = async () => {
+  return await Post.find().sort({ upvotes: -1 });
+};
 
+// Function to fetch posts sorted by date added (most recent)
+const fetchPostsByDate = async () => {
+  return await Post.find().sort({ createdAt: -1 }); // Assuming your Post model has a createdAt field
+};
 
 app.get('/posts', async (req, res) => {
+  const filter = req.query.filter;
   try {
-    const posts = await Post.find().sort({ upvotes: -1 }); // Sort by upvotes in descending order
+    let posts;
+    if (filter === 'relevance') {
+      posts = await fetchPostsByRelevance();
+    } else if (filter === 'date_added') {
+      posts = await fetchPostsByDate();
+    } else {
+      // Default to relevance if filter is not specified or is unknown
+      posts = await fetchPostsByRelevance();
+    }
     res.json(posts);
   } catch (error) {
     console.error('Error fetching posts:', error);
     res.status(500).send('Internal server error');
   }
 });
+
+
+
+
 
 
 app.get('/posts/:postId', async (req, res) => {
