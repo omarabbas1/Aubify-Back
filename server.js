@@ -261,8 +261,9 @@ app.post('/posts/:postId/comments', async (req, res) => {
 
 // Function to fetch posts sorted by upvotes (relevance)
 const fetchPostsByRelevance = async () => {
-  return await Post.find().sort({ upvotes: -1 });
+  return await Post.find().sort({ upvotes: -1, createdAt: -1 });
 };
+
 
 // Function to fetch posts sorted by date added (most recent)
 const fetchPostsByDate = async () => {
