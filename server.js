@@ -1,11 +1,10 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors'); // Import CORS middleware
+const cors = require('cors');
 const app = express();
 const PORT = 8080;
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
-// Import User model
 const User = require('./models/User');
 const Post = require('./models/Post'); // Adjust the path as necessary based on your project structure
 const Comment = require('./models/Comment'); // Adjust the path according to your project structure
@@ -128,7 +127,6 @@ app.post('/saveUserData', async (req, res) => {
   }
 });
 
-
 app.post('/verifyEmail', async (req, res) => {
   const { verificationCode } = req.body;
 
@@ -200,8 +198,6 @@ app.post('/handleSignup', async (req, res) => {
   }
 });
 
-
-
 app.post('/posts', async (req, res) => {
   const { title, content } = req.body; // No author information
   try {
@@ -213,32 +209,6 @@ app.post('/posts', async (req, res) => {
     res.status(500).send('Internal server error');
   }
 });
-
-// app.post('/posts/:postId/comments', async (req, res) => {
-//   const { postId } = req.params;
-//   const { content } = req.body;
-
-//   try {
-//     const post = await Post.findById(postId);
-//     if (!post) {
-//       return res.status(404).send('Post not found');
-//     }
-
-//     // Create a new comment
-//     const newComment = new Comment({ content });
-//     await newComment.save(); // Save the comment to the database
-
-//     // Push the new comment's ID to the post's comments array
-//     post.comments.push(newComment._id);
-//     await post.save();
-
-//     res.status(200).json(post);
-//   } catch (error) {
-//     console.error('Error adding comment:', error);
-//     res.status(500).send('Internal server error');
-//   }
-// });
-
 
 app.post('/posts/:postId/comments', async (req, res) => {
   try {
@@ -288,11 +258,6 @@ app.get('/posts', async (req, res) => {
     res.status(500).send('Internal server error');
   }
 });
-
-
-
-
-
 
 app.get('/posts/:postId', async (req, res) => {
   try {
@@ -500,14 +465,6 @@ app.post('/saveNewPassword', async (req, res) => {
 
   res.json({ message: 'New password saved successfully' });
 });
-
-
-
-
-
-
-
-
 
 // Start the server
 app.listen(PORT, () => {
