@@ -464,6 +464,42 @@ app.post('/posts/:postId/comments/:commentIndex/downvote', async (req, res) => {
     res.status(500).send('Internal server error');
   }
 });
+app.post('/checkCurrentPassword', async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email: email });
+  
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  // Compare provided password with the stored hashed password
+  const match = await bcrypt.compare(password, user.password);
+  if (match) {
+    res.json({ currentPasswordMatch: true });
+  } else {
+    res.json({ currentPasswordMatch: false });
+  }
+});
+
+// Route to save new password
+app.post('/saveNewPassword', async (req, res) => {
+  const { email, newPassword } = req.body;
+  const user = await User.findOne({ email: email });
+  
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  // Hash the new password
+  const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+  // Update the user's password hash
+  // In a real application, this would involve updating the database
+  user.password = newPasswordHash;
+  await User.updateOne({ email: email }, { $set: { password: newPasswordHash } });
+
+  res.json({ message: 'New password saved successfully' });
+});
 
 
 
