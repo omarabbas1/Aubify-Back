@@ -199,10 +199,22 @@ app.post('/handleSignup', async (req, res) => {
 });
 
 app.post('/posts', async (req, res) => {
-  const { title, content } = req.body; // No author information
+  const { title, content, userEmail } = req.body; // Now expecting userEmail to identify the user
+
   try {
-    const newPost = new Post({ title, content, comments: [] });
+    const user = await User.findOne({ email: userEmail });
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
+    // Assuming you have a User model where each user has a posts array
+    const newPost = new Post({ title, content, author: user._id }); // Set the author of the post
     await newPost.save();
+
+    // Now, add this post to the user's posts array
+    user.posts.push(newPost._id); // Add the post's ID to the user's posts array
+    await user.save(); // Save the user with the updated posts array
+
     res.status(201).json(newPost);
   } catch (error) {
     console.error('Error creating post:', error);
@@ -470,4 +482,25 @@ app.post('/saveNewPassword', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 
+});
+
+app.get('/user/posts', async (req, res) => {
+  const { email } = req.query; // Get the email from query parameters
+
+  try {
+    // First, find the user by email
+    const user = await User.findOne({ email: email });
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
+    // Then, find all posts authored by that user
+    const posts = await Post.find({ author: user._id }).populate('author', 'name email');
+
+    // Return the posts to the client
+    res.json(posts);
+  } catch (error) {
+    console.error('Failed to fetch user posts:', error);
+    res.status(500).send('Internal server error');
+  }
 });
