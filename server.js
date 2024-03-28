@@ -198,29 +198,7 @@ app.post('/handleSignup', async (req, res) => {
   }
 });
 
-app.post('/posts', async (req, res) => {
-  const { title, content, userEmail } = req.body; // Now expecting userEmail to identify the user
 
-  try {
-    const user = await User.findOne({ email: userEmail });
-    if (!user) {
-      return res.status(404).send('User not found');
-    }
-
-    // Assuming you have a User model where each user has a posts array
-    const newPost = new Post({ title, content, author: user._id }); // Set the author of the post
-    await newPost.save();
-
-    // Now, add this post to the user's posts array
-    user.posts.push(newPost._id); // Add the post's ID to the user's posts array
-    await user.save(); // Save the user with the updated posts array
-
-    res.status(201).json(newPost);
-  } catch (error) {
-    console.error('Error creating post:', error);
-    res.status(500).send('Internal server error');
-  }
-});
 
 app.post('/posts/:postId/comments', async (req, res) => {
   try {
