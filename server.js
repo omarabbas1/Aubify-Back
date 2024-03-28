@@ -219,7 +219,6 @@ app.post('/posts', async (req, res) => {
   } catch (error) {
     console.error('Error creating post:', error);
     res.status(500).send('Internal server error');
-    //Huss3in
   }
 });
 
