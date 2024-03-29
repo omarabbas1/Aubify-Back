@@ -504,3 +504,37 @@ app.get('/user/posts', async (req, res) => {
     res.status(500).send('Internal server error');
   }
 });
+
+app.get('/posts/:postId/author/anonymousId', async (req, res) => {
+  try {
+    const { postId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+      return res.status(400).send({ message: "Invalid Post ID format." });
+  }
+    const post = await findPostById(postId);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+    res.json({ anonymousId: post.author.anonymousId });
+  } catch (error) {
+    console.error('Error fetching author\'s anonymous ID:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+async function findPostById(postId) {
+  try {
+    const post = await Post.findById(postId)
+      .populate('author')
+
+    if (!post) {
+      console.log('No post found with the given ID.');
+      return null;
+    }
+
+    return post;
+  } catch (error) {
+    console.error('Error finding post by ID:', error);
+    throw error; // Rethrowing the error might be helpful if you want calling functions to handle it
+  }
+}
