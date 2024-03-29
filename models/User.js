@@ -35,6 +35,10 @@ const userSchema = new mongoose.Schema({
   posts: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Post'
+  }],
+  comments: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Comment' // Assuming 'Comment' is the name of your Comment model
   }]
 });
 
@@ -46,11 +50,6 @@ userSchema.pre('save', function(next) {
   this.anonymousId = `Anonymous#${String(this.anonymousNumber)}`;
   next();
 });
-
-User = mongoose.model('User', userSchema);
-
-module.exports = User;
-
 
 User = mongoose.model('User', userSchema);
 

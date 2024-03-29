@@ -224,22 +224,50 @@ app.post('/posts', async (req, res) => {
 
 app.post('/posts/:postId/comments', async (req, res) => {
   try {
-    const postId = req.params.postId;
-    const comment = req.body.comment;
-    const post = await Post.findById(postId);
+    const { postId } = req.params;
+    const { content, userEmail } = req.body;
 
+    if (!content || !userEmail) {
+      return res.status(400).send('Content and userEmail are required.');
+    }
+
+    const user = await User.findOne({ email: userEmail });
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
+    const post = await Post.findById(postId);
     if (!post) {
       return res.status(404).send('Post not found');
     }
 
-    post.comments.push(comment);
+    // Retrieve the anonymous ID from the user object
+    const { anonymousId } = user;
+
+    const newComment = await Comment.create({
+      content: content,
+      author: user._id,
+      authorAnonymousId: anonymousId, // Add anonymousId to the comment
+      upvotedBy: [],
+      downvotedBy: []
+    });
+
+    post.comments.push(newComment._id);
     await post.save();
-    res.json(post);
+
+    // Populate comments and their authors
+    await post.populate({
+      path: 'comments',
+      populate: { path: 'author', select: 'email' }
+    });
+
+    res.status(201).json(post);
   } catch (error) {
     console.error('Error adding comment:', error);
     res.status(500).send('Internal server error');
   }
 });
+
 
 // Function to fetch posts sorted by upvotes (relevance)
 const fetchPostsByRelevance = async () => {
@@ -271,21 +299,30 @@ app.get('/posts', async (req, res) => {
   }
 });
 
+
 app.get('/posts/:postId', async (req, res) => {
   try {
     const { postId } = req.params;
+    // Fetch the post by ID
     const post = await Post.findById(postId)
       .populate({
-        path: 'author',
-        select: 'anonymousId' // Only fetch the anonymousId of the author
+        path: 'comments',
+        populate: { path: 'author', select: 'anonymousId' } // Populate each comment's author's anonymousId
       })
-      .populate('comments'); // Assuming comments are stored within the post document
+      .populate('author', 'anonymousId') // Populate the post's author's anonymousId
+      .exec();
+
     if (!post) {
       return res.status(404).send('Post not found');
     }
-    res.json(post);
+
+    // Optional: Convert post to JSON if you need to modify it before sending
+    const postJSON = post.toJSON();
+
+    // Respond with the post data
+    res.json(postJSON);
   } catch (error) {
-    console.error('Error fetching post:', error);
+    console.error('Failed to fetch post:', error);
     res.status(500).send('Internal server error');
   }
 });
@@ -361,91 +398,106 @@ app.post('/posts/:postId/downvote', async (req, res) => {
   }
 });
 
-app.post('/posts/:postId/comments/:commentIndex/upvote', async (req, res) => {
-  const { postId, commentIndex } = req.params;
+// Endpoint for upvoting a comment
+app.post('/posts/:postId/comments/:commentId/upvote', async (req, res) => {
+  const { postId, commentId } = req.params;
   const { userEmail } = req.body;
 
   try {
+    // Find the user by email
     const user = await User.findOne({ email: userEmail });
     if (!user) {
       return res.status(404).send('User not found');
     }
 
+    // Find the post
     const post = await Post.findById(postId);
     if (!post) {
       return res.status(404).send('Post not found');
     }
 
-    const comment = post.comments[commentIndex];
+    // Find the comment within the post
+    const comment = await Comment.findById(commentId);
     if (!comment) {
       return res.status(404).send('Comment not found');
     }
 
-    const userId = user._id.toString();
-    const alreadyUpvoted = comment.upvotedBy.includes(userId);
-    const alreadyDownvoted = comment.downvotedBy.includes(userId);
-
-    if (!alreadyUpvoted) {
-      if (alreadyDownvoted) {
-        // Remove from downvotedBy and decrement downvotes
-        comment.downvotes -= 1;
-        comment.downvotedBy = comment.downvotedBy.filter(id => id.toString() !== userId);
-      }
-      // Add to upvotedBy and increment upvotes
-      comment.upvotes += 1;
-      comment.upvotedBy.push(userId);
+    // Check if the user has already upvoted the comment
+    if (comment.upvotedBy.includes(user._id)) {
+      return res.status(409).send('You have already upvoted this comment.');
     }
-    post.comments.sort((a, b) => b.upvotes - a.upvotes);
-    await post.save();
-    res.json(post);
+
+    // Check if the user has downvoted the comment, if so, remove the downvote
+    if (comment.downvotedBy.includes(user._id)) {
+      comment.downvotes -= 1;
+      comment.downvotedBy.pull(user._id);
+    }
+
+    // Upvote the comment
+    comment.upvotes += 1;
+    comment.upvotedBy.push(user._id);
+
+    // Save the updated comment
+    await comment.save();
+
+    res.status(200).json(comment); // Optionally, return the updated comment
   } catch (error) {
     console.error('Error upvoting comment:', error);
     res.status(500).send('Internal server error');
   }
 });
 
-app.post('/posts/:postId/comments/:commentIndex/downvote', async (req, res) => {
-  const { postId, commentIndex } = req.params;
+// Endpoint for downvoting a comment
+app.post('/posts/:postId/comments/:commentId/downvote', async (req, res) => {
+  const { postId, commentId } = req.params;
   const { userEmail } = req.body;
 
   try {
+    // Find the user by email
     const user = await User.findOne({ email: userEmail });
     if (!user) {
       return res.status(404).send('User not found');
     }
 
+    // Find the post
     const post = await Post.findById(postId);
     if (!post) {
       return res.status(404).send('Post not found');
     }
 
-    const comment = post.comments[commentIndex];
+    // Find the comment within the post
+    const comment = await Comment.findById(commentId);
     if (!comment) {
       return res.status(404).send('Comment not found');
     }
 
-    const userId = user._id.toString();
-    const alreadyUpvoted = comment.upvotedBy.includes(userId);
-    const alreadyDownvoted = comment.downvotedBy.includes(userId);
-
-    if (!alreadyDownvoted) {
-      if (alreadyUpvoted) {
-        // Remove from upvotedBy and decrement upvotes
-        comment.upvotes -= 1;
-        comment.upvotedBy = comment.upvotedBy.filter(id => id.toString() !== userId);
-      }
-      // Add to downvotedBy and increment downvotes
-      comment.downvotes += 1;
-      comment.downvotedBy.push(userId);
+    // Check if the user has already downvoted the comment
+    if (comment.downvotedBy.includes(user._id)) {
+      return res.status(409).send('You have already downvoted this comment.');
     }
-    post.comments.sort((a, b) => b.upvotes - a.upvotes);
-    await post.save();
-    res.json(post);
+
+    // Check if the user has upvoted the comment, if so, remove the upvote
+    if (comment.upvotedBy.includes(user._id)) {
+      comment.upvotes -= 1;
+      comment.upvotedBy.pull(user._id);
+    }
+
+    // Downvote the comment
+    comment.downvotes += 1;
+    comment.downvotedBy.push(user._id);
+
+    // Save the updated comment
+    await comment.save();
+
+    res.status(200).json(comment); // Optionally, return the updated comment
   } catch (error) {
     console.error('Error downvoting comment:', error);
     res.status(500).send('Internal server error');
   }
 });
+
+
+
 app.post('/checkCurrentPassword', async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email: email });
