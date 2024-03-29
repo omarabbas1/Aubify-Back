@@ -273,9 +273,13 @@ app.get('/posts', async (req, res) => {
 
 app.get('/posts/:postId', async (req, res) => {
   try {
-    const postId = req.params.postId;
-    // Ensure 'comments' is populated to fetch actual comment documents
-    const post = await Post.findById(postId).populate('comments');
+    const { postId } = req.params;
+    const post = await Post.findById(postId)
+      .populate({
+        path: 'author',
+        select: 'anonymousId' // Only fetch the anonymousId of the author
+      })
+      .populate('comments'); // Assuming comments are stored within the post document
     if (!post) {
       return res.status(404).send('Post not found');
     }
@@ -285,6 +289,7 @@ app.get('/posts/:postId', async (req, res) => {
     res.status(500).send('Internal server error');
   }
 });
+
 
 app.post('/posts/:postId/upvote', async (req, res) => {
   const { postId } = req.params;
