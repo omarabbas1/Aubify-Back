@@ -94,6 +94,7 @@ app.post('/checkPassword', async (req, res) => {
   }
 });
 
+
 app.post('/saveUserData', async (req, res) => {
   const { name, email, password } = req.body;
   // Generate a simple verification code
@@ -199,9 +200,9 @@ app.post('/handleSignup', async (req, res) => {
 });
 
 app.post('/posts', async (req, res) => {
-  const { title, content } = req.body; // No author information
+  const { title, content, userEmail } = req.body; // No author information
   try {
-    const newPost = new Post({ title, content, comments: [] });
+    const newPost = new Post({ title, content, userEmail, comments: [] });
     await newPost.save();
     res.status(201).json(newPost);
   } catch (error) {
@@ -240,6 +241,8 @@ const fetchPostsByDate = async () => {
   return await Post.find().sort({ createdAt: -1 }); // Assuming your Post model has a createdAt field
 };
 
+
+
 app.get('/posts', async (req, res) => {
   const filter = req.query.filter;
   try {
@@ -258,6 +261,27 @@ app.get('/posts', async (req, res) => {
     res.status(500).send('Internal server error');
   }
 });
+
+
+app.get('/posts-by-user-email', async (req, res) => {
+  const userEmail = req.query.userEmail; 
+  try {
+    let posts;
+
+    if (userEmail) {
+      posts = await Post.find({ userEmail: userEmail }).sort({ createdAt: -1 }); 
+    } else {
+      posts = await Post.find(); 
+    }
+
+    res.json(posts);
+  } catch (error) {
+    console.error('Error fetching posts:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+
 
 app.get('/posts/:postId', async (req, res) => {
   try {
