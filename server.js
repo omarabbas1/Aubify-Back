@@ -593,3 +593,49 @@ async function findPostById(postId) {
     throw error; // Rethrowing the error might be helpful if you want calling functions to handle it
   }
 }
+
+app.get('/user/avatar', async (req, res) => {
+  const { email } = req.query;
+
+  try {
+    const user = await User.findOne({ email: email }).exec();
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+    res.json({ avatarUrl: user.avatarUrl }); // Assuming user document has an avatarUrl field
+  } catch (error) {
+    console.error('Error fetching user avatar:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+app.post('/user/update-avatar', async (req, res) => {
+  const { email, avatarUrl } = req.body;
+
+  try {
+    const user = await User.findOneAndUpdate({ email: email }, { avatarUrl: avatarUrl }, { new: true });
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+    res.send('Avatar updated successfully');
+  } catch (error) {
+    console.error('Error updating avatar:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+app.get('/user/date-created', async (req, res) => {
+  const { email } = req.query;
+
+  try {
+    const user = await User.findOne({ email: email }).exec();
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+    res.json({ dateCreated: user.createdAt.toISOString().split('T')[0] }); // Format date as YYYY-MM-DD
+  } catch (error) {
+    console.error('Failed to fetch date created:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+

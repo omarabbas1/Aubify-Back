@@ -11,6 +11,10 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true // Ensures that each email is unique
   },
+  avatarUrl: {
+    type: String,
+    default: '' // Optional: Provide a default avatar URL if you have a default avatar image
+  },
   password: {
     type: String,
     required: true
