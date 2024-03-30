@@ -307,7 +307,8 @@ app.get('/posts/:postId', async (req, res) => {
     const post = await Post.findById(postId)
       .populate({
         path: 'comments',
-        populate: { path: 'author', select: 'anonymousId' } // Populate each comment's author's anonymousId
+        options: { sort: { 'upvotes': -1 } }, // Add this line to sort comments by upvotes
+        populate: { path: 'author', select: 'anonymousId' } // Assuming you're populating author details
       })
       .populate('author', 'anonymousId') // Populate the post's author's anonymousId
       .exec();
@@ -316,16 +317,13 @@ app.get('/posts/:postId', async (req, res) => {
       return res.status(404).send('Post not found');
     }
 
-    // Optional: Convert post to JSON if you need to modify it before sending
-    const postJSON = post.toJSON();
-
-    // Respond with the post data
-    res.json(postJSON);
+    res.json(post);
   } catch (error) {
     console.error('Failed to fetch post:', error);
     res.status(500).send('Internal server error');
   }
 });
+
 
 
 app.post('/posts/:postId/upvote', async (req, res) => {
