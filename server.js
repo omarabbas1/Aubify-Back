@@ -632,10 +632,19 @@ app.get('/user/date-created', async (req, res) => {
     if (!user) {
       return res.status(404).send('User not found');
     }
-    res.json({ dateCreated: user.createdAt.toISOString().split('T')[0] }); // Format date as YYYY-MM-DD
+    
+    const accountCreated = user.accountCreated;
+
+    const month = (accountCreated.getMonth() + 1).toString().padStart(2, '0'); // Adding 1 to get the correct month index
+    const day = accountCreated.getDate().toString().padStart(2, '0');
+    const year = accountCreated.getFullYear();
+
+    // Format the date as mm-dd-yyyy
+    const formattedDate = `${month}/${day}/${year}`;
+
+    res.json({ dateCreated: formattedDate });
   } catch (error) {
     console.error('Failed to fetch date created:', error);
     res.status(500).send('Internal server error');
   }
 });
-
