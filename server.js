@@ -8,6 +8,8 @@ const nodemailer = require('nodemailer');
 const User = require('./models/User');
 const Post = require('./models/Post'); // Adjust the path as necessary based on your project structure
 const Comment = require('./models/Comment'); // Adjust the path according to your project structure
+const Feedback = require('./models/Feedback'); // Make sure the path matches your project structure
+
 
 
 // Configure Nodemailer
@@ -199,21 +201,20 @@ app.post('/handleSignup', async (req, res) => {
 });
 
 app.post('/posts', async (req, res) => {
-  const { title, content, userEmail } = req.body; // Now expecting userEmail to identify the user
-
+  const { userEmail, title, content } = req.body;
   try {
     const user = await User.findOne({ email: userEmail });
-    if (!user) {
-      return res.status(404).send('User not found');
+    if (!user) return res.status(404).send('User not found');
+
+    if (!canSubmit(user.lastPostTimestamps)) {
+      return res.status(429).send('Post submission limit reached. Please try again later.');
     }
 
-    // Assuming you have a User model where each user has a posts array
-    const newPost = new Post({ title, content, author: user._id }); // Set the author of the post
+    const newPost = new Post({ title, content, author: user._id });
     await newPost.save();
 
-    // Now, add this post to the user's posts array
-    user.posts.push(newPost._id); // Add the post's ID to the user's posts array
-    await user.save(); // Save the user with the updated posts array
+    user.lastPostTimestamps = addTimestamp(user.lastPostTimestamps);
+    await user.save(); // Ensure this is awaited
 
     res.status(201).json(newPost);
   } catch (error) {
@@ -221,6 +222,7 @@ app.post('/posts', async (req, res) => {
     res.status(500).send('Internal server error');
   }
 });
+
 
 app.post('/posts/:postId/comments', async (req, res) => {
   try {
@@ -325,10 +327,9 @@ app.get('/posts/:postId', async (req, res) => {
 });
 
 
-
 app.post('/posts/:postId/upvote', async (req, res) => {
   const { postId } = req.params;
-  const {userEmail} = req.body; // Assuming you have user's email from the session or token
+  const { userEmail } = req.body; // Assuming you have user's email from the session or token
 
   try {
     const user = await User.findOne({ email: userEmail });
@@ -342,17 +343,22 @@ app.post('/posts/:postId/upvote', async (req, res) => {
     }
 
     const userId = user._id;
+    // Check if the user already upvoted the post
     if (post.upvotedBy.includes(userId)) {
-      return res.status(409).send('You have already upvoted this post.');
+      // User re-presses upvote, so remove their upvote
+      post.upvotes -= 1;
+      post.upvotedBy = post.upvotedBy.filter(id => id.toString() !== userId.toString());
+    } else {
+      // Add upvote if not already upvoted
+      if (post.downvotedBy.includes(userId)) {
+        // If previously downvoted, first remove the downvote
+        post.downvotes -= 1;
+        post.downvotedBy = post.downvotedBy.filter(id => id.toString() !== userId.toString());
+      }
+      post.upvotes += 1;
+      post.upvotedBy.push(userId);
     }
 
-    if (post.downvotedBy.includes(userId)) {
-      post.downvotes -= 1;
-      post.downvotedBy = post.downvotedBy.filter(id => id.toString() !== userId.toString());
-    }
-
-    post.upvotes += 1;
-    post.upvotedBy.push(userId);
     await post.save();
     res.json(post);
   } catch (error) {
@@ -361,9 +367,10 @@ app.post('/posts/:postId/upvote', async (req, res) => {
   }
 });
 
+
 app.post('/posts/:postId/downvote', async (req, res) => {
   const { postId } = req.params;
-  const {userEmail} = req.body; // Assuming you have user's email from the session or token
+  const { userEmail } = req.body;
 
   try {
     const user = await User.findOne({ email: userEmail });
@@ -377,17 +384,22 @@ app.post('/posts/:postId/downvote', async (req, res) => {
     }
 
     const userId = user._id;
+    // Check if the user already downvoted the post
     if (post.downvotedBy.includes(userId)) {
-      return res.status(409).send('You have already downvoted this post.');
+      // User re-presses downvote, so remove their downvote
+      post.downvotes -= 1;
+      post.downvotedBy = post.downvotedBy.filter(id => id.toString() !== userId.toString());
+    } else {
+      // Add downvote if not already downvoted
+      if (post.upvotedBy.includes(userId)) {
+        // If previously upvoted, first remove the upvote
+        post.upvotes -= 1;
+        post.upvotedBy = post.upvotedBy.filter(id => id.toString() !== userId.toString());
+      }
+      post.downvotes += 1;
+      post.downvotedBy.push(userId);
     }
 
-    if (post.upvotedBy.includes(userId)) {
-      post.upvotes -= 1;
-      post.upvotedBy = post.upvotedBy.filter(id => id.toString() !== userId.toString());
-    }
-
-    post.downvotes += 1;
-    post.downvotedBy.push(userId);
     await post.save();
     res.json(post);
   } catch (error) {
@@ -396,54 +408,47 @@ app.post('/posts/:postId/downvote', async (req, res) => {
   }
 });
 
+
 // Endpoint for upvoting a comment
 app.post('/posts/:postId/comments/:commentId/upvote', async (req, res) => {
   const { postId, commentId } = req.params;
   const { userEmail } = req.body;
 
   try {
-    // Find the user by email
     const user = await User.findOne({ email: userEmail });
     if (!user) {
       return res.status(404).send('User not found');
     }
 
-    // Find the post
-    const post = await Post.findById(postId);
-    if (!post) {
-      return res.status(404).send('Post not found');
-    }
-
-    // Find the comment within the post
     const comment = await Comment.findById(commentId);
     if (!comment) {
       return res.status(404).send('Comment not found');
     }
 
-    // Check if the user has already upvoted the comment
-    if (comment.upvotedBy.includes(user._id)) {
-      return res.status(409).send('You have already upvoted this comment.');
+    const userId = user._id;
+    if (comment.upvotedBy.includes(userId)) {
+      // User re-presses upvote, so remove their upvote
+      comment.upvotes -= 1;
+      comment.upvotedBy.pull(userId);
+    } else {
+      // Add upvote if not already upvoted
+      if (comment.downvotedBy.includes(userId)) {
+        // If previously downvoted, first remove the downvote
+        comment.downvotes -= 1;
+        comment.downvotedBy.pull(userId);
+      }
+      comment.upvotes += 1;
+      comment.upvotedBy.push(userId);
     }
 
-    // Check if the user has downvoted the comment, if so, remove the downvote
-    if (comment.downvotedBy.includes(user._id)) {
-      comment.downvotes -= 1;
-      comment.downvotedBy.pull(user._id);
-    }
-
-    // Upvote the comment
-    comment.upvotes += 1;
-    comment.upvotedBy.push(user._id);
-
-    // Save the updated comment
     await comment.save();
-
-    res.status(200).json(comment); // Optionally, return the updated comment
+    res.status(200).json(comment);
   } catch (error) {
     console.error('Error upvoting comment:', error);
     res.status(500).send('Internal server error');
   }
 });
+
 
 // Endpoint for downvoting a comment
 app.post('/posts/:postId/comments/:commentId/downvote', async (req, res) => {
@@ -451,48 +456,40 @@ app.post('/posts/:postId/comments/:commentId/downvote', async (req, res) => {
   const { userEmail } = req.body;
 
   try {
-    // Find the user by email
     const user = await User.findOne({ email: userEmail });
     if (!user) {
       return res.status(404).send('User not found');
     }
 
-    // Find the post
-    const post = await Post.findById(postId);
-    if (!post) {
-      return res.status(404).send('Post not found');
-    }
-
-    // Find the comment within the post
     const comment = await Comment.findById(commentId);
     if (!comment) {
       return res.status(404).send('Comment not found');
     }
 
-    // Check if the user has already downvoted the comment
-    if (comment.downvotedBy.includes(user._id)) {
-      return res.status(409).send('You have already downvoted this comment.');
+    const userId = user._id;
+    if (comment.downvotedBy.includes(userId)) {
+      // User re-presses downvote, so remove their downvote
+      comment.downvotes -= 1;
+      comment.downvotedBy.pull(userId);
+    } else {
+      // Add downvote if not already downvoted
+      if (comment.upvotedBy.includes(userId)) {
+        // If previously upvoted, first remove the upvote
+        comment.upvotes -= 1;
+        comment.upvotedBy.pull(userId);
+      }
+      comment.downvotes += 1;
+      comment.downvotedBy.push(userId);
     }
 
-    // Check if the user has upvoted the comment, if so, remove the upvote
-    if (comment.upvotedBy.includes(user._id)) {
-      comment.upvotes -= 1;
-      comment.upvotedBy.pull(user._id);
-    }
-
-    // Downvote the comment
-    comment.downvotes += 1;
-    comment.downvotedBy.push(user._id);
-
-    // Save the updated comment
     await comment.save();
-
-    res.status(200).json(comment); // Optionally, return the updated comment
+    res.status(200).json(comment);
   } catch (error) {
     console.error('Error downvoting comment:', error);
     res.status(500).send('Internal server error');
   }
 });
+
 
 
 
@@ -561,18 +558,34 @@ app.get('/user/posts', async (req, res) => {
 });
 
 app.get('/posts/:postId/author/anonymousId', async (req, res) => {
-  try {
-    const { postId } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(postId)) {
-      return res.status(400).send({ message: "Invalid Post ID format." });
+  const { postId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(postId)) {
+    return res.status(400).send({ message: "Invalid Post ID format." });
   }
-    const post = await findPostById(postId);
+
+  try {
+    // Step 1: Fetch the post by ID to get the author field.
+    const post = await Post.findById(postId).populate('author');
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
     }
-    res.json({ anonymousId: post.author.anonymousId });
+
+    // The author is populated, so you have access to all user fields, including `lastPostTimestamps`.
+    const author = post.author;
+    if (!author) {
+      return res.status(404).json({ message: 'Author not found' });
+    }
+
+    // Step 3: Check the submission limit for the author of the post.
+    if (!canSubmit(author.lastPostTimestamps)) {
+      return res.status(429).send({ message: "Author's post submission limit reached. Please try again later." });
+    }
+
+    // Step 4: Respond with the anonymous ID if the limit has not been reached.
+    res.json({ anonymousId: author.anonymousId });
   } catch (error) {
-    console.error('Error fetching author\'s anonymous ID:', error);
+    console.error(`Error fetching author's anonymous ID:`, error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
@@ -645,6 +658,78 @@ app.get('/user/date-created', async (req, res) => {
     res.json({ dateCreated: formattedDate });
   } catch (error) {
     console.error('Failed to fetch date created:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+// Route to fetch feedback list
+app.get('/getFeedbackList', async (req, res) => {
+  try {
+    const feedbackList = await Feedback.find().sort({ createdAt: -1 }); // Fetch all feedback, newest first
+    res.json(feedbackList);
+  } catch (error) {
+    console.error('Error fetching feedback list:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Route to send (save) feedback
+app.post('/sendFeedback', async (req, res) => {
+  const { email, message } = req.body;
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).send('User not found');
+
+    if (!canSubmit(user.lastFeedbackTimestamps)) {
+      return res.status(429).send('Feedback submission limit reached. Please try again later.');
+    }
+
+    const newFeedback = new Feedback({ email, message });
+    await newFeedback.save();
+
+    user.lastFeedbackTimestamps = addTimestamp(user.lastFeedbackTimestamps);
+    await user.save(); // Make sure to await the save operation
+
+    res.status(201).json({ message: 'Feedback sent successfully.' });
+  } catch (error) {
+    console.error('Error sending feedback:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+
+// Utility functions (Place these inside your main server file or a separate utilities file)
+
+const MAX_SUBMISSIONS = 4;
+const SUBMISSION_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+// Removes timestamps older than 24 hours and checks if a new submission is allowed
+const canSubmit = (timestamps) => {
+  const now = new Date();
+  const recentTimestamps = timestamps.filter(timestamp => now - timestamp < SUBMISSION_WINDOW_MS);
+  return recentTimestamps.length < MAX_SUBMISSIONS;
+};
+
+// Add a new timestamp to the array (ensuring it doesn't exceed the max length)
+const addTimestamp = (timestamps) => {
+  const now = new Date();
+  timestamps.push(now);
+  // Ensure we only keep the relevant timestamps within the 24-hour window
+  return timestamps.slice(-MAX_SUBMISSIONS);
+};
+
+// Assuming you have an authentication middleware that sets `req.user`
+app.get('/checkAdminStatus', async (req, res) => {
+  const { userEmail } = req.query; // Get the userEmail from query parameters
+
+  try {
+    const user = await User.findOne({ email: userEmail });
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+    res.json({ isAdmin: user.isAdmin });
+  } catch (error) {
+    console.error('Error checking admin status:', error);
     res.status(500).send('Internal server error');
   }
 });

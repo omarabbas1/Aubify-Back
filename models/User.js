@@ -2,6 +2,15 @@ const mongoose = require('mongoose');
 const AutoIncrement = require('mongoose-sequence')(mongoose); // You'll need the mongoose-sequence plugin
 
 const userSchema = new mongoose.Schema({
+    // Existing schema fields...
+    lastPostTimestamps: [{
+      type: Date,
+      default: []
+    }],
+    lastFeedbackTimestamps: [{
+      type: Date,
+      default: []
+    }],
   name: {
     type: String,
     required: true
@@ -35,6 +44,10 @@ const userSchema = new mongoose.Schema({
   anonymousId: {
     type: String,
     unique: true // Ensures the anonymousId is unique
+  },
+  isAdmin: {
+    type: Boolean,
+    default: false // Most users are not administrators
   },
   posts: [{
     type: mongoose.Schema.Types.ObjectId,
