@@ -210,10 +210,15 @@ app.post('/posts', async (req, res) => {
       return res.status(429).send('Post submission limit reached. Please try again later.');
     }
 
+    // Create the new post
     const newPost = new Post({ title, content, author: user._id });
     await newPost.save();
 
+    // Add the post's ObjectId to the user's posts array and update the timestamps
+    user.posts.push(newPost._id);
     user.lastPostTimestamps = addTimestamp(user.lastPostTimestamps);
+
+    // Save the updated user document
     await user.save(); // Ensure this is awaited
 
     res.status(201).json(newPost);
@@ -565,30 +570,26 @@ app.get('/posts/:postId/author/anonymousId', async (req, res) => {
   }
 
   try {
-    // Step 1: Fetch the post by ID to get the author field.
-    const post = await Post.findById(postId).populate('author');
+    // Fetch the post by ID to get the author field
+    const post = await findPostById(postId);
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
     }
 
-    // The author is populated, so you have access to all user fields, including `lastPostTimestamps`.
+    // The author is populated, so you have access to all user fields
     const author = post.author;
     if (!author) {
       return res.status(404).json({ message: 'Author not found' });
     }
 
-    // Step 3: Check the submission limit for the author of the post.
-    if (!canSubmit(author.lastPostTimestamps)) {
-      return res.status(429).send({ message: "Author's post submission limit reached. Please try again later." });
-    }
-
-    // Step 4: Respond with the anonymous ID if the limit has not been reached.
+    // Respond with the anonymous ID, ignoring the submission limit
     res.json({ anonymousId: author.anonymousId });
   } catch (error) {
     console.error(`Error fetching author's anonymous ID:`, error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
 
 async function findPostById(postId) {
   try {
