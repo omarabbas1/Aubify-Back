@@ -734,3 +734,40 @@ app.get('/checkAdminStatus', async (req, res) => {
     res.status(500).send('Internal server error');
   }
 });
+
+// Assuming you have a Post model imported at the top
+// const Post = require('./models/Post');
+
+app.get('/reportedPosts', async (req, res) => {
+  try {
+    // Fetch all posts where 'reported' is true
+    const reportedPosts = await Post.find({ reported: true }).select('title _id').exec();
+    res.json(reportedPosts);
+  } catch (error) {
+    console.error('Failed to fetch reported posts:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+app.post('/posts/:postId/report', async (req, res) => {
+  const { postId } = req.params;
+
+  try {
+    // Find the post by ID
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).send('Post not found');
+    }
+
+    // Toggle the 'reported' status
+    post.reported = !post.reported;
+    await post.save();
+
+    // Respond indicating whether the post was reported or the report was removed
+    const action = post.reported ? "add" : "remove";
+    res.json({ action: action, message: `Report ${action === "add" ? "added" : "removed"} successfully.` });
+  } catch (error) {
+    console.error('Error toggling report status:', error);
+    res.status(500).send('Internal server error');
+  }
+});
