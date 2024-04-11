@@ -803,4 +803,52 @@ app.post('/posts/:postId/report', async (req, res) => {
   }
 });
 
+// server.js or a relevant file in your backend structure
+app.delete('/posts/:postId', async (req, res) => {
+  const { postId } = req.params;
+  const { userEmail } = req.body; // Assuming you're passing the userEmail in the request body
+
+  try {
+    const user = await User.findOne({ email: userEmail });
+    if (!user || !user.isAdmin) {
+      return res.status(403).send('Unauthorized: Only admins can delete posts.');
+    }
+
+    const post = await Post.findByIdAndDelete(postId);
+    if (!post) {
+      return res.status(404).send('Post not found.');
+    }
+
+    // Optionally, you might want to delete comments associated with the post or handle other cleanup here.
+
+    res.send('Post deleted successfully.');
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    res.status(500).send('Internal server error.');
+  }
+});
+// DELETE /posts/:postId - Delete a post
+app.delete('/posts/:postId', async (req, res) => {
+  const { postId } = req.params;
+  const userEmail = req.body.userEmail; // Assuming the userEmail is passed in the body for identification
+
+  try {
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).send('Post not found.');
+    }
+
+    // Optionally, check if the post belongs to the user making the request
+    if (post.authorEmail !== userEmail) {
+      return res.status(403).send('You can only delete your own posts.');
+    }
+
+    await Post.deleteOne({ _id: postId });
+    res.send('Post deleted successfully.');
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    res.status(500).send('Internal server error.');
+  }
+});
+
 
