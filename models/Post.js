@@ -8,7 +8,7 @@ const postSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Comment'
   }],  
-  reported: { type: Boolean, default: false },
+  reportedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   upvotes: { type: Number, default: 0 },
   downvotes: { type: Number, default: 0 },
   upvotedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],

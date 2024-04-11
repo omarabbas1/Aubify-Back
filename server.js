@@ -740,8 +740,9 @@ app.get('/checkAdminStatus', async (req, res) => {
 
 app.get('/reportedPosts', async (req, res) => {
   try {
-    // Fetch all posts where 'reported' is true
-    const reportedPosts = await Post.find({ reported: true }).select('title _id').exec();
+    const reportedPosts = await Post.find({ "reportedBy.0": { $exists: true } }) // This finds posts with at least one report
+                                      .select('title reportedBy')
+                                      .exec();
     res.json(reportedPosts);
   } catch (error) {
     console.error('Failed to fetch reported posts:', error);
@@ -749,25 +750,43 @@ app.get('/reportedPosts', async (req, res) => {
   }
 });
 
+
 app.post('/posts/:postId/report', async (req, res) => {
   const { postId } = req.params;
+  const { userEmail } = req.body;
 
   try {
+    // Find the user by email
+    const user = await User.findOne({ email: userEmail });
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
     // Find the post by ID
     const post = await Post.findById(postId);
     if (!post) {
       return res.status(404).send('Post not found');
     }
 
-    // Toggle the 'reported' status
-    post.reported = !post.reported;
-    await post.save();
+    // Check if the user has already reported the post
+    const index = post.reportedBy.indexOf(user._id);
+    let action = '';
+    if (index === -1) {
+      // User hasn't reported the post yet, add them to the reportedBy array
+      post.reportedBy.push(user._id);
+      action = 'add';
+    } else {
+      // User has already reported the post, remove them from the reportedBy array
+      post.reportedBy.splice(index, 1);
+      action = 'remove';
+    }
 
-    // Respond indicating whether the post was reported or the report was removed
-    const action = post.reported ? "add" : "remove";
-    res.json({ action: action, message: `Report ${action === "add" ? "added" : "removed"} successfully.` });
+    await post.save();
+    res.json({ message: `Report ${action === 'add' ? 'added' : 'removed'} successfully.`, action: action });
   } catch (error) {
     console.error('Error toggling report status:', error);
     res.status(500).send('Internal server error');
   }
 });
+
+
