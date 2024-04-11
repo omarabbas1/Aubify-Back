@@ -828,18 +828,19 @@ app.delete('/posts/:postId', async (req, res) => {
   }
 });
 // DELETE /posts/:postId - Delete a post
-app.delete('/user/delete/${postId}', async (req, res) => {
+app.delete('/user/delete/:postId', async (req, res) => {
   const { postId } = req.params;
-  const userEmail = req.body.userEmail; // Assuming the userEmail is passed in the body for identification
+  const userEmail = req.query.userEmail; // Assuming the userEmail is passed as a query parameter for identification
 
   try {
-    const post = await Post.findById(postId);
+    const post = await Post.findById(postId).populate('author');
     if (!post) {
       return res.status(404).send('Post not found.');
     }
 
-    // Optionally, check if the post belongs to the user making the request
-    if (post.authorEmail !== userEmail) {
+    // Check if the post belongs to the user making the request
+    // Assuming `post.author` is populated and contains `email` field
+    if (post.author.email !== userEmail) {
       return res.status(403).send('You can only delete your own posts.');
     }
 
@@ -850,5 +851,6 @@ app.delete('/user/delete/${postId}', async (req, res) => {
     res.status(500).send('Internal server error.');
   }
 });
+
 
 
