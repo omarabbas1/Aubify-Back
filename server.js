@@ -828,7 +828,7 @@ app.delete('/posts/:postId', async (req, res) => {
   }
 });
 // DELETE /posts/:postId - Delete a post
-app.delete('/posts/:postId', async (req, res) => {
+app.delete('/user/delete/${postId}', async (req, res) => {
   const { postId } = req.params;
   const userEmail = req.body.userEmail; // Assuming the userEmail is passed in the body for identification
 
