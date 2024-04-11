@@ -230,50 +230,64 @@ app.post('/posts', async (req, res) => {
 
 
 app.post('/posts/:postId/comments', async (req, res) => {
+  const { postId } = req.params;
+  const { content, userEmail } = req.body;
+
+  if (!content || !userEmail) {
+    return res.status(400).send('Content and userEmail are required.');
+  }
+
   try {
-    const { postId } = req.params;
-    const { content, userEmail } = req.body;
-
-    if (!content || !userEmail) {
-      return res.status(400).send('Content and userEmail are required.');
-    }
-
     const user = await User.findOne({ email: userEmail });
-    if (!user) {
-      return res.status(404).send('User not found');
-    }
-
     const post = await Post.findById(postId);
-    if (!post) {
-      return res.status(404).send('Post not found');
+
+    if (!user || !post) {
+      return res.status(404).send('User or post not found');
     }
 
-    // Retrieve the anonymous ID from the user object
-    const { anonymousId } = user;
+    // Check if the user has already commented 4 times on this post in the last 24 hours
+    const commentLimitEntry = user.commentTimestamps.find(entry => entry.post.toString() === postId);
 
-    const newComment = await Comment.create({
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+
+    if (commentLimitEntry) {
+      // Filter out timestamps older than 24 hours
+      const recentTimestamps = commentLimitEntry.timestamps.filter(timestamp => timestamp > oneDayAgo);
+
+      if (recentTimestamps.length >= 4) {
+        return res.status(429).send('Comment limit reached for today on this post.');
+      }
+
+      commentLimitEntry.timestamps.push(now);
+    } else {
+      // If no entry exists for this post, create one
+      user.commentTimestamps.push({ post: post._id, timestamps: [now] });
+    }
+    
+    user.markModified('commentTimestamps');
+    await user.save();
+
+    // Proceed to save the comment
+    const newComment = new Comment({
       content: content,
       author: user._id,
-      authorAnonymousId: anonymousId, // Add anonymousId to the comment
-      upvotedBy: [],
-      downvotedBy: []
+      post: post._id
     });
 
+    await newComment.save();
+
+    // Optionally, push and save the comment ID to the post document
     post.comments.push(newComment._id);
     await post.save();
 
-    // Populate comments and their authors
-    await post.populate({
-      path: 'comments',
-      populate: { path: 'author', select: 'email' }
-    });
-
-    res.status(201).json(post);
+    res.status(201).json(newComment);
   } catch (error) {
-    console.error('Error adding comment:', error);
+    console.error('Failed to post comment:', error);
     res.status(500).send('Internal server error');
   }
 });
+
 
 
 // Function to fetch posts sorted by upvotes (relevance)

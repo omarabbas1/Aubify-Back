@@ -56,6 +56,13 @@ const userSchema = new mongoose.Schema({
   comments: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Comment' // Assuming 'Comment' is the name of your Comment model
+  }],
+  commentTimestamps: [{
+    post: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Post'
+    },
+    timestamps: [Date]
   }]
 });
 
