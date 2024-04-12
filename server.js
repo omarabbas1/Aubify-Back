@@ -122,7 +122,7 @@ app.post('/saveUserData', async (req, res) => {
     await sendVerificationEmail(email, verificationCode);
 
     // Respond to the request
-    res.status(201).send('User registered, verification email sent.');
+    res.status(200).send('User registered, verification email sent.');
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).send('Error registering user.');
