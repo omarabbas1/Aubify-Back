@@ -32,7 +32,7 @@ mongoose
 const transporter = nodemailer.createTransport({
   service: "hotmail",
   auth: {
-    user: "Aubify10@outlook.com", // Use environment variables
+    user: "aubify-verification@outlook.com", // Use environment variables
     pass: "LamdaDev@2024", // Use environment variables
   },
 });
@@ -54,7 +54,7 @@ const findUserNameByEmail = async (email) => {
 
 const sendVerificationEmail = async (email, verificationCode) => {
   const mailOptions = {
-    from: "Aubify10@outlook.com",
+    from: "aubify-verification@outlook.com",
     to: email,
     subject: "Verify Your Email",
     text: `Your verification code is: ${verificationCode}`,
